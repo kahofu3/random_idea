@@ -47,6 +47,32 @@ def fetch_spx_data(ib):
     ib.sleep(2)  # Wait for data to populate
     print(f"SPX Last Price: {ticker.last}")
     print(f"SPX Bid: {ticker.bid}, Ask: {ticker.ask}")
+    # If no price data, exit
+    if ticker.last is None and ticker.bid is None and ticker.ask is None:
+        print("No SPX market data available. Exiting.")
+        log_trade("No SPX market data available. Exiting.")
+        ib.disconnect()
+        exit(1)
+    # Monitor for price changes for 15 seconds
+    initial = (ticker.last, ticker.bid, ticker.ask)
+    changed = False
+    for _ in range(15):  # Check every second for 15 seconds
+        ib.sleep(1)
+        if (ticker.last, ticker.bid, ticker.ask) != initial:
+            changed = True
+            break
+    if not changed:
+        print("No SPX market activity detected in 15 seconds.")
+        log_trade("No SPX market activity detected in 15 seconds.")
+        answer = input("No SPX market activity detected. Do you want to quit? (y/n): ").strip().lower()
+        if answer == 'y':
+            print("Exiting as requested by user.")
+            log_trade("User chose to exit due to no market activity.")
+            ib.disconnect()
+            exit(0)
+        else:
+            print("Continuing as requested by user.")
+            log_trade("User chose to continue despite no market activity.")
     return ticker
 
 
@@ -69,14 +95,44 @@ def get_0dte_expiry():
     return datetime.datetime.now().strftime('%Y%m%d')
 
 
-def select_put_spread_strikes(ib, spx_price):
-    # Example: short OTM put (e.g., 1% below spot), long farther OTM put (e.g., 2% below spot)
-    short_strike = round(spx_price * 0.99 / 5) * 5
-    long_strike = round(spx_price * 0.98 / 5) * 5
-    expiry = get_0dte_expiry()
-    short_put = Option(SYMBOL, expiry, short_strike, 'P', EXCHANGE)
-    long_put = Option(SYMBOL, expiry, long_strike, 'P', EXCHANGE)
-    return short_put, long_put
+def fetch_put_chain(ib, expiry):
+    # Fetch the full SPX put options chain for 0DTE expiry
+    spx = Stock(SYMBOL, EXCHANGE, CURRENCY)
+    chains = ib.reqSecDefOptParams(spx.symbol, '', spx.secType, spx.conId)
+    strikes = []
+    for chain in chains:
+        if chain.tradingClass == SYMBOL and expiry in chain.expirations:
+            strikes = sorted([float(s) for s in chain.strikes if float(s) < 10000])
+            break
+    puts = [Option(SYMBOL, expiry, strike, 'P', EXCHANGE) for strike in strikes]
+    return puts
+
+
+def get_mid_price(ib, option):
+    ticker = ib.reqMktData(option, '', False, False)
+    ib.sleep(0.5)
+    if ticker.bid is not None and ticker.ask is not None:
+        return (ticker.bid + ticker.ask) / 2
+    return None
+
+
+def select_farthest_put_spread(ib, puts):
+    # Try all possible OTM put spreads, farthest OTM first
+    best_pair = None
+    for i in range(len(puts) - 1, 0, -1):
+        for j in range(i - 1, -1, -1):
+            short_put = puts[j]
+            long_put = puts[i]
+            short_mid = get_mid_price(ib, short_put)
+            long_mid = get_mid_price(ib, long_put)
+            if short_mid is None or long_mid is None:
+                continue
+            net_credit = short_mid - long_mid
+            if net_credit >= COMBO_NET_CREDIT:
+                best_pair = (short_put, long_put, net_credit)
+                # Since we're going from farthest OTM, take the first that matches
+                return best_pair
+    return None
 
 
 def calculate_max_contracts(ib, short_put, long_put):
@@ -85,44 +141,58 @@ def calculate_max_contracts(ib, short_put, long_put):
     return 1
 
 
-def place_put_spread(ib, short_put, long_put, contracts):
-    # Request market data for both options
-    short_ticker = ib.reqMktData(short_put, '', False, False)
-    long_ticker = ib.reqMktData(long_put, '', False, False)
-    ib.sleep(2)
-    # Calculate mid price for the spread
-    net_credit = (short_ticker.bid + short_ticker.ask)/2 - (long_ticker.bid + long_ticker.ask)/2
-    print(f"Calculated net credit for spread: {net_credit}")
-    log_trade(f"Calculated net credit for spread: {net_credit}")
-    if net_credit < COMBO_NET_CREDIT:
-        print(f"Net credit {net_credit} is less than target {COMBO_NET_CREDIT}. Not trading.")
-        log_trade(f"Net credit {net_credit} is less than target {COMBO_NET_CREDIT}. Not trading.")
-        return
-    # Place limit order for the spread (stub)
+def place_put_spread(ib, short_put, long_put, contracts, net_credit):
     print(f"Would place limit order to sell {contracts} put spread(s) at net credit {net_credit}")
     log_trade(f"Would place limit order to sell {contracts} put spread(s) at net credit {net_credit}")
     # TODO: Implement actual combo order placement
+
+
+def check_spx_options_activity(ib, puts, wait_seconds=10):
+    """
+    Check if any SPX put options in the list have trading activity (price or volume change).
+    Returns True if activity is detected, False otherwise.
+    """
+    tickers = [ib.reqMktData(opt, '', False, False) for opt in puts]
+    ib.sleep(1)
+    initial = [(t.last, t.bid, t.ask, t.volume) for t in tickers]
+    for _ in range(wait_seconds):
+        ib.sleep(1)
+        for idx, t in enumerate(tickers):
+            if (t.last, t.bid, t.ask, t.volume) != initial[idx]:
+                return True  # Activity detected
+    return False  # No activity detected
 
 
 def main():
     ib = connect_ib()
     ticker = fetch_spx_data(ib)
     wait_until_target_time()
-    spx_price = ticker.last
-    short_put, long_put = select_put_spread_strikes(ib, spx_price)
-    contracts = calculate_max_contracts(ib, short_put, long_put)
-    retries = 0
-    while retries <= MAX_RETRIES:
-        try:
-            place_put_spread(ib, short_put, long_put, contracts)
-            break
-        except Exception as e:
-            print(f"Error placing order: {e}")
-            log_trade(f"Error placing order: {e}")
-            retries += 1
-            if retries > MAX_RETRIES:
-                print("Max retries reached. Aborting.")
-                log_trade("Max retries reached. Aborting.")
+    expiry = get_0dte_expiry()
+    puts = fetch_put_chain(ib, expiry)
+    if not check_spx_options_activity(ib, puts, wait_seconds=10):
+        print("No SPX options trading activity detected. Exiting.")
+        log_trade("No SPX options trading activity detected. Exiting.")
+        ib.disconnect()
+        exit(0)
+    result = select_farthest_put_spread(ib, puts)
+    if result:
+        short_put, long_put, net_credit = result
+        contracts = calculate_max_contracts(ib, short_put, long_put)
+        retries = 0
+        while retries <= MAX_RETRIES:
+            try:
+                place_put_spread(ib, short_put, long_put, contracts, net_credit)
+                break
+            except Exception as e:
+                print(f"Error placing order: {e}")
+                log_trade(f"Error placing order: {e}")
+                retries += 1
+                if retries > MAX_RETRIES:
+                    print("Max retries reached. Aborting.")
+                    log_trade("Max retries reached. Aborting.")
+    else:
+        print("No suitable put spread found with net credit >= 0.15.")
+        log_trade("No suitable put spread found with net credit >= 0.15.")
     ib.disconnect()
 
 if __name__ == '__main__':
