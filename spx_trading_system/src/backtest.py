@@ -14,7 +14,7 @@ from tqdm import tqdm
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.config import TRADING_CONFIG, PERFORMANCE_TARGETS, BACKTEST_CONFIG
 from src.data_handler import DataHandler
-from src.indicators import TechnicalIndicators
+from src.indicators_simple import TechnicalIndicators
 from src.strategy import TradingStrategy
 
 logger = logging.getLogger(__name__)

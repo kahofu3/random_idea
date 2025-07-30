@@ -17,7 +17,7 @@ import pickle
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.config import INDICATOR_PARAMS, BACKTEST_CONFIG
 from src.data_handler import DataHandler
-from src.indicators import TechnicalIndicators
+from src.indicators_simple import TechnicalIndicators
 from src.strategy import TradingStrategy
 from src.backtest import Backtester
 

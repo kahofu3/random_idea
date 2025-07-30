@@ -1,0 +1,98 @@
+[
+    {
+        "strategy_name": "RSI_Only",
+        "total_trades": 0,
+        "win_rate": 0,
+        "profit_factor": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "annual_return": 0,
+        "total_pnl": 0,
+        "expected_value": 0,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "MACD_Only",
+        "total_trades": 0,
+        "win_rate": 0,
+        "profit_factor": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "annual_return": 0,
+        "total_pnl": 0,
+        "expected_value": 0,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "EMA_Crossover",
+        "total_trades": 0,
+        "win_rate": 0,
+        "profit_factor": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "annual_return": 0,
+        "total_pnl": 0,
+        "expected_value": 0,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "Bollinger_Bands",
+        "total_trades": 0,
+        "win_rate": 0,
+        "profit_factor": 0,
+        "sharpe_ratio": 0,
+        "max_drawdown": 0,
+        "annual_return": 0,
+        "total_pnl": 0,
+        "expected_value": 0,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "RSI_MACD_Combo",
+        "total_trades": 7,
+        "win_rate": 0.5714285714285714,
+        "profit_factor": 0.4423120344019437,
+        "sharpe_ratio": -0.23962171439647753,
+        "max_drawdown": 0.005655230636336248,
+        "annual_return": -0.04117858071794203,
+        "total_pnl": -327.17228515625357,
+        "expected_value": -46.738897879464794,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "RSI_BB_Combo",
+        "total_trades": 9,
+        "win_rate": 0.2222222222222222,
+        "profit_factor": 0.10988313622576508,
+        "sharpe_ratio": -0.6874818199744955,
+        "max_drawdown": 0.018628946428714925,
+        "annual_return": -0.19135636929216093,
+        "total_pnl": -1520.3656738281315,
+        "expected_value": -168.92951931423684,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "Triple_Combo",
+        "total_trades": 12,
+        "win_rate": 0.6666666666666666,
+        "profit_factor": 3.224839314832232,
+        "sharpe_ratio": 0.41313463931589617,
+        "max_drawdown": 0.002978472793761281,
+        "annual_return": 0.09584316290072722,
+        "total_pnl": 761.4936230468775,
+        "expected_value": 63.45780192057311,
+        "meets_targets": false
+    },
+    {
+        "strategy_name": "All_Indicators",
+        "total_trades": 25,
+        "win_rate": 0.36,
+        "profit_factor": 0.48327771319616736,
+        "sharpe_ratio": -0.4993107145252442,
+        "max_drawdown": 0.007103188011251581,
+        "annual_return": -0.07478355225812013,
+        "total_pnl": -594.1706891740796,
+        "expected_value": -23.766827566963187,
+        "meets_targets": false
+    }
+]

@@ -230,8 +230,9 @@ class TradingStrategy:
         df['short_signal'] = (df['short_strength'] >= min_confirmations).astype(int)
         
         # Ensure no conflicting signals
-        df.loc[df['long_signal'] & df['short_signal'], 'long_signal'] = 0
-        df.loc[df['long_signal'] & df['short_signal'], 'short_signal'] = 0
+        conflict_mask = (df['long_signal'] == 1) & (df['short_signal'] == 1)
+        df.loc[conflict_mask, 'long_signal'] = 0
+        df.loc[conflict_mask, 'short_signal'] = 0
         
         return df
     
