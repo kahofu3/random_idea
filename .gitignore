@@ -1,6 +1,0 @@
-trades.log
-*.log
-.env
-venv/
-trading_env/
-__pycache__/
