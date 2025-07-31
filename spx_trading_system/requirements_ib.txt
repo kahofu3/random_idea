@@ -1,0 +1,25 @@
+# Interactive Brokers Trading Requirements
+
+# IB API Python client
+ib_insync>=0.9.86
+
+# Additional requirements for live trading
+asyncio>=3.11.0
+nest_asyncio>=1.5.6
+
+# Real-time monitoring
+schedule>=1.2.0
+watchdog>=3.0.0
+
+# Notifications (optional)
+python-telegram-bot>=20.3  # For trade alerts
+email-validator>=2.0.0
+python-dotenv>=1.0.0
+
+# Database for trade logging
+pymongo>=4.4.0  # For trade history
+redis>=4.6.0    # For real-time state management
+
+# System monitoring
+psutil>=5.9.5
+prometheus-client>=0.17.0
