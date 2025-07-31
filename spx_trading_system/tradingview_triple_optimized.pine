@@ -1,0 +1,206 @@
+//@version=5
+indicator("SPX Triple_Optimized Strategy [Complete]", overlay=true, precision=2)
+
+// ====== INFO PANEL ======
+var string VERSION = "1.0"
+var string AUTHOR = "SPX Trading System"
+
+// ====== STRATEGY PARAMETERS (from backtesting) ======
+// These are the winning parameters from our optimization
+RSI_PERIOD = 9
+RSI_OVERSOLD = 25
+RSI_OVERBOUGHT = 75
+MACD_FAST = 8
+MACD_SLOW = 21
+MACD_SIGNAL = 5
+EMA_SHORT = 5
+EMA_LONG = 20
+ATR_PERIOD = 14
+
+// ====== USER INPUTS ======
+showTable = input.bool(true, "Show Info Table", group="Display")
+showSignals = input.bool(true, "Show Buy/Sell Signals", group="Display")
+showEMA = input.bool(true, "Show EMA Lines", group="Display")
+showBackground = input.bool(true, "Show Background Colors", group="Display")
+
+// Risk Management
+useStopLoss = input.bool(true, "Use Stop Loss", group="Risk Management")
+stopLossATR = input.float(1.0, "Stop Loss (ATR Multiplier)", minval=0.5, maxval=3.0, group="Risk Management")
+takeProfitATR = input.float(4.0, "Take Profit (ATR Multiplier)", minval=1.0, maxval=10.0, group="Risk Management")
+
+// Alert Settings
+alertsEnabled = input.bool(true, "Enable Alerts", group="Alerts")
+webhookFormat = input.bool(false, "Use Webhook JSON Format", group="Alerts")
+
+// ====== CALCULATE INDICATORS ======
+// RSI
+rsi = ta.rsi(close, RSI_PERIOD)
+
+// MACD
+[macdLine, signalLine, histLine] = ta.macd(close, MACD_FAST, MACD_SLOW, MACD_SIGNAL)
+
+// EMA
+emaShort = ta.ema(close, EMA_SHORT)
+emaLong = ta.ema(close, EMA_LONG)
+
+// ATR for stops
+atr = ta.atr(ATR_PERIOD)
+
+// ====== SIGNAL CONDITIONS ======
+// Individual signals
+rsiOversold = rsi < RSI_OVERSOLD
+rsiOverbought = rsi > RSI_OVERBOUGHT
+
+macdBullish = ta.crossover(macdLine, signalLine)
+macdBearish = ta.crossunder(macdLine, signalLine)
+
+emaBullish = ta.crossover(emaShort, emaLong)
+emaBearish = ta.crossunder(emaShort, emaLong)
+
+// Count confirmations
+bullishConfirmations = (rsiOversold ? 1 : 0) + (macdBullish ? 1 : 0) + (emaBullish ? 1 : 0)
+bearishConfirmations = (rsiOverbought ? 1 : 0) + (macdBearish ? 1 : 0) + (emaBearish ? 1 : 0)
+
+// Generate signals (need at least 1 confirmation)
+buySignal = bullishConfirmations >= 1 and barstate.isconfirmed
+sellSignal = bearishConfirmations >= 1 and barstate.isconfirmed
+
+// ====== CALCULATE STOPS ======
+buyStopLoss = close - (atr * stopLossATR)
+buyTakeProfit = close + (atr * takeProfitATR)
+sellStopLoss = close + (atr * stopLossATR)
+sellTakeProfit = close - (atr * takeProfitATR)
+
+// ====== PLOTTING ======
+// EMA Lines
+if showEMA
+    plot(emaShort, "EMA 5", color=color.new(color.blue, 0), linewidth=2)
+    plot(emaLong, "EMA 20", color=color.new(color.orange, 0), linewidth=2)
+
+// Background colors for RSI extremes
+if showBackground
+    bgcolor(rsiOversold ? color.new(color.green, 90) : na, title="RSI Oversold")
+    bgcolor(rsiOverbought ? color.new(color.red, 90) : na, title="RSI Overbought")
+
+// Buy/Sell signals
+if showSignals
+    plotshape(buySignal, title="Buy Signal", location=location.belowbar, 
+              color=color.green, style=shape.triangleup, size=size.small,
+              text="BUY", textcolor=color.white)
+    plotshape(sellSignal, title="Sell Signal", location=location.abovebar, 
+              color=color.red, style=shape.triangledown, size=size.small,
+              text="SELL", textcolor=color.white)
+
+// Plot stop levels when signal occurs
+if buySignal and useStopLoss
+    line.new(bar_index, buyStopLoss, bar_index + 10, buyStopLoss, 
+             color=color.red, style=line.style_dashed, width=1)
+    line.new(bar_index, buyTakeProfit, bar_index + 10, buyTakeProfit, 
+             color=color.green, style=line.style_dashed, width=1)
+
+if sellSignal and useStopLoss
+    line.new(bar_index, sellStopLoss, bar_index + 10, sellStopLoss, 
+             color=color.red, style=line.style_dashed, width=1)
+    line.new(bar_index, sellTakeProfit, bar_index + 10, sellTakeProfit, 
+             color=color.green, style=line.style_dashed, width=1)
+
+// ====== INFO TABLE ======
+if showTable and barstate.islast
+    var table infoTable = table.new(position.top_right, 2, 8, 
+                                   bgcolor=color.new(color.black, 85),
+                                   border_color=color.gray, border_width=1)
+    
+    // Headers
+    table.cell(infoTable, 0, 0, "INDICATOR", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 0, "VALUE", text_color=color.white, text_size=size.small)
+    
+    // RSI
+    rsiColor = rsi < RSI_OVERSOLD ? color.green : rsi > RSI_OVERBOUGHT ? color.red : color.gray
+    table.cell(infoTable, 0, 1, "RSI (9)", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 1, str.tostring(rsi, "#.#"), text_color=rsiColor, text_size=size.small)
+    
+    // MACD
+    macdColor = macdLine > signalLine ? color.green : color.red
+    table.cell(infoTable, 0, 2, "MACD", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 2, macdLine > signalLine ? "BULLISH" : "BEARISH", 
+               text_color=macdColor, text_size=size.small)
+    
+    // EMA
+    emaColor = emaShort > emaLong ? color.green : color.red
+    table.cell(infoTable, 0, 3, "EMA", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 3, emaShort > emaLong ? "BULLISH" : "BEARISH", 
+               text_color=emaColor, text_size=size.small)
+    
+    // ATR
+    table.cell(infoTable, 0, 4, "ATR (14)", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 4, str.tostring(atr, "#.##"), text_color=color.gray, text_size=size.small)
+    
+    // Confirmations
+    table.cell(infoTable, 0, 5, "Bull Signals", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 5, str.tostring(bullishConfirmations) + "/3", 
+               text_color=bullishConfirmations > 0 ? color.green : color.gray, text_size=size.small)
+    
+    table.cell(infoTable, 0, 6, "Bear Signals", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 6, str.tostring(bearishConfirmations) + "/3", 
+               text_color=bearishConfirmations > 0 ? color.red : color.gray, text_size=size.small)
+    
+    // Current Price
+    table.cell(infoTable, 0, 7, "Price", text_color=color.white, text_size=size.small)
+    table.cell(infoTable, 1, 7, str.tostring(close, "#.##"), text_color=color.white, text_size=size.small)
+
+// ====== ALERTS ======
+if alertsEnabled
+    // Standard alerts
+    if buySignal and not webhookFormat
+        alert("BUY Signal: " + syminfo.ticker + " @ " + str.tostring(close) + 
+              "\nConfirmations: " + str.tostring(bullishConfirmations) + 
+              "\nStop Loss: " + str.tostring(buyStopLoss, "#.##") + 
+              "\nTake Profit: " + str.tostring(buyTakeProfit, "#.##"), 
+              alert.freq_once_per_bar_close)
+    
+    if sellSignal and not webhookFormat
+        alert("SELL Signal: " + syminfo.ticker + " @ " + str.tostring(close) + 
+              "\nConfirmations: " + str.tostring(bearishConfirmations) + 
+              "\nStop Loss: " + str.tostring(sellStopLoss, "#.##") + 
+              "\nTake Profit: " + str.tostring(sellTakeProfit, "#.##"), 
+              alert.freq_once_per_bar_close)
+    
+    // Webhook JSON format
+    if buySignal and webhookFormat
+        jsonAlert = '{"action":"buy",'
+        jsonAlert := jsonAlert + '"ticker":"' + syminfo.ticker + '",'
+        jsonAlert := jsonAlert + '"price":' + str.tostring(close) + ','
+        jsonAlert := jsonAlert + '"stop_loss":' + str.tostring(buyStopLoss) + ','
+        jsonAlert := jsonAlert + '"take_profit":' + str.tostring(buyTakeProfit) + ','
+        jsonAlert := jsonAlert + '"confirmations":' + str.tostring(bullishConfirmations) + ','
+        jsonAlert := jsonAlert + '"rsi":' + str.tostring(rsi) + ','
+        jsonAlert := jsonAlert + '"timestamp":"' + str.tostring(time) + '"}'
+        alert(jsonAlert, alert.freq_once_per_bar_close)
+    
+    if sellSignal and webhookFormat
+        jsonAlert = '{"action":"sell",'
+        jsonAlert := jsonAlert + '"ticker":"' + syminfo.ticker + '",'
+        jsonAlert := jsonAlert + '"price":' + str.tostring(close) + ','
+        jsonAlert := jsonAlert + '"stop_loss":' + str.tostring(sellStopLoss) + ','
+        jsonAlert := jsonAlert + '"take_profit":' + str.tostring(sellTakeProfit) + ','
+        jsonAlert := jsonAlert + '"confirmations":' + str.tostring(bearishConfirmations) + ','
+        jsonAlert := jsonAlert + '"rsi":' + str.tostring(rsi) + ','
+        jsonAlert := jsonAlert + '"timestamp":"' + str.tostring(time) + '"}'
+        alert(jsonAlert, alert.freq_once_per_bar_close)
+
+// ====== LABELS FOR CURRENT VALUES ======
+var label currentLabel = na
+label.delete(currentLabel)
+
+if barstate.islast and showSignals
+    labelText = "Triple_Optimized Strategy\n"
+    labelText := labelText + "─────────────\n"
+    labelText := labelText + "RSI: " + str.tostring(rsi, "#.#") + "\n"
+    labelText := labelText + "MACD: " + (macdLine > signalLine ? "↑" : "↓") + "\n"
+    labelText := labelText + "EMA: " + (emaShort > emaLong ? "↑" : "↓") + "\n"
+    
+    currentLabel := label.new(bar_index + 5, high, labelText, 
+                             color=color.new(color.blue, 85), 
+                             textcolor=color.white,
+                             style=label.style_label_left,
+                             size=size.small)
