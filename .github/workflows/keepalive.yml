@@ -1,0 +1,38 @@
+name: WQ Brain Keepalive - kentway805
+
+on:
+  schedule:
+    - cron: '*/25 * * * *'  # every 25 minutes
+  workflow_dispatch:         # allow manual trigger
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping WQ Brain session
+        env:
+          WQ_COOKIES: ${{ secrets.WQ_COOKIES_KENTWAY805 }}
+        run: |
+          python3 - <<'EOF'
+          import os, json, base64, requests
+          from datetime import datetime
+
+          raw = os.environ.get("WQ_COOKIES", "")
+          if not raw:
+              print("ERROR: WQ_COOKIES_KENTWAY805 secret not set")
+              exit(1)
+
+          cookies = json.loads(base64.b64decode(raw).decode())
+          sess = requests.Session()
+          sess.headers["User-Agent"] = "Mozilla/5.0"
+          for c in cookies:
+              sess.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
+
+          r = sess.get("https://api.worldquantbrain.com/users/self", timeout=10)
+          if r.status_code == 200:
+              email = r.json().get("email", "?")
+              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] Session alive — {email}")
+          else:
+              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] Session DEAD ({r.status_code}) — face check needed!")
+              exit(1)
+          EOF
