@@ -17,22 +17,35 @@ jobs:
           import os, json, base64, requests
           from datetime import datetime
 
-          raw = os.environ.get("WQ_COOKIES", "")
+          raw = os.environ.get("WQ_COOKIES", "").strip()
           if not raw:
-              print("ERROR: WQ_COOKIES_KENTWAY805 secret not set")
+              print("ERROR: WQ_COOKIES_KENTWAY805 secret is empty or not set")
               exit(1)
 
-          cookies = json.loads(base64.b64decode(raw).decode())
+          print(f"Secret loaded, length: {len(raw)} chars")
+
+          try:
+              decoded = base64.b64decode(raw).decode()
+              cookies = json.loads(decoded)
+              print(f"Decoded OK: {len(cookies)} cookies")
+          except Exception as e:
+              print(f"ERROR decoding secret: {e}")
+              print(f"First 50 chars of raw: {raw[:50]}")
+              exit(1)
+
           sess = requests.Session()
           sess.headers["User-Agent"] = "Mozilla/5.0"
           for c in cookies:
               sess.cookies.set(c["name"], c["value"], domain=c.get("domain", ""))
 
-          r = sess.get("https://api.worldquantbrain.com/users/self", timeout=10)
+          print("Pinging WQ Brain API...")
+          r = sess.get("https://api.worldquantbrain.com/users/self", timeout=15)
+          print(f"Response: {r.status_code}")
+
           if r.status_code == 200:
               email = r.json().get("email", "?")
-              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] Session alive — {email}")
+              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] ✅ Session alive — {email}")
           else:
-              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] Session DEAD ({r.status_code}) — face check needed!")
+              print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}] ❌ Session DEAD ({r.status_code}): {r.text[:200]}")
               exit(1)
           EOF
