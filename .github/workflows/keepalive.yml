@@ -1,9 +1,9 @@
 name: WQ Brain Keepalive - kentway805
 
 on:
-  schedule:
-    - cron: '*/25 * * * *'  # every 25 minutes
-  workflow_dispatch:         # allow manual trigger
+  # schedule disabled 2026-05-15 — WQ cookie expired, runs were failing every 25 min
+  # - cron: '*/25 * * * *'
+  workflow_dispatch:         # manual trigger only
 
 jobs:
   keepalive:
