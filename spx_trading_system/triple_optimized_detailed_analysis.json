@@ -1,0 +1,20 @@
+{
+    "strategy": "Triple_Optimized",
+    "total_trades": 32,
+    "win_rate": 0.65625,
+    "avg_win": 214.84200753348063,
+    "avg_loss": 259.7625621448864,
+    "risk_reward_ratio": 0.8270707131909538,
+    "expected_value": 51.69668670654198,
+    "avg_stop_loss_pct": 0.9634994135209097,
+    "avg_take_profit_pct": 3.9999999999999987,
+    "trades_per_day": 0.5333333333333333,
+    "trades_per_week": 2.6666666666666665,
+    "trades_per_month": 11.2,
+    "trades_per_year": 134.4,
+    "monthly_expected_profit": 579.0028911132702,
+    "yearly_expected_profit": 6948.034693359243,
+    "avg_trade_duration_minutes": 170.3125,
+    "max_win_streak": 5,
+    "max_loss_streak": 4
+}

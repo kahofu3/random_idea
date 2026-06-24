@@ -1,0 +1,17 @@
+{
+    "test_date": "2025-07-31T12:01:07.750589",
+    "data_period": "60 days",
+    "strategies": [
+        {
+            "name": "Enhanced Mean Reversion",
+            "total_trades": 7,
+            "win_rate": 0.7142857142857143,
+            "avg_win": 0.005123898459014401,
+            "avg_loss": 0.013661451160641666,
+            "expected_value": -0.00024334428945876072,
+            "total_return": -0.0017034100262113263,
+            "sharpe_ratio": -0.385340558706798,
+            "max_drawdown": 0.02655316086737183,
+            "trades": [
+                {
+                    "entry_time": 
